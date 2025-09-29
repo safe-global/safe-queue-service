@@ -1,22 +1,23 @@
-FROM python:3.12-slim
+FROM python:3.13-slim
 
 EXPOSE 8888/tcp
 ARG APP_HOME=/app
 WORKDIR ${APP_HOME}
 ENV PYTHONUNBUFFERED=1
 
-COPY requirements/prod.txt ./requirements.txt
+COPY requirements-prod.txt ./requirements.txt
 RUN set -ex \
 	&& buildDeps=" \
 		build-essential \
-        git \
-		libssl-dev \
+        curl \
 		" \
     && apt-get update \
     && apt-get upgrade -y \
-    && apt-get install -y --no-install-recommends $buildDeps \
+    && apt-get install -y --no-install-recommends postgresql-client $buildDeps \
+	&& export PATH="$PATH:$HOME/.cargo/bin" \
     && pip install -U --no-cache-dir wheel setuptools pip \
     && pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir ipython \
     && apt-get purge -y --auto-remove $buildDeps \
     && rm -rf /var/lib/apt/lists/* \
     && find /usr/local \

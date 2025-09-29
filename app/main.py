@@ -5,7 +5,7 @@ from .routers import about, default
 
 app = FastAPI(
     title="Safe Queue Service",
-    description="Safe Core{API} transaction queue service",
+    description="Service for handling offchain Safe Multisig Transactions",
     version=VERSION,
     docs_url=None,
     redoc_url=None,

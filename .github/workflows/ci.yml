@@ -13,38 +13,77 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.12"]
+        python-version: ["3.13"]
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: pip install pre-commit
       - name: Run pre-commit
         run: pre-commit run --all-files
+        env:
+          SKIP: mypy
 
   test-app:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.12"]
+        python-version: ["3.13"]
+    services:
+      redis:
+        image: redis
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      rabbitmq:
+        image: rabbitmq:alpine
+        ports:
+          - 5672:5672
+        options: >-
+          --health-cmd "rabbitmqctl await_startup"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'pip'
-        cache-dependency-path: 'requirements/*.txt'
+        cache-dependency-path: 'requirements*.txt'
     - name: Install dependencies
       run: |
         pip install wheel
-        pip install -r requirements/dev.txt coveralls
+        pip install -r requirements.txt coveralls
       env:
         PIP_USE_MIRRORS: true
+    - name: Run database migrations
+      if: ${{ !always() }}
+      run: |
+        alembic upgrade head
+      env:
+        ENV_FILE: .env.test
     - name: Run mypy
       run: mypy .
     - name: Run tests and coverage
@@ -52,6 +91,7 @@ jobs:
         coverage run --source=$SOURCE_FOLDER -m pytest -rxXs
       env:
         SOURCE_FOLDER: app
+        ENV_FILE: .env.test
     - name: Send results to coveralls
       continue-on-error: true  # Ignore coveralls problems
       run: coveralls --service=github
@@ -65,7 +105,7 @@ jobs:
       - test-app
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || (github.event_name == 'release' && github.event.action == 'released')
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: docker/setup-qemu-action@v3
       with:
         platforms: arm64
@@ -122,7 +162,7 @@ jobs:
     needs: [docker-deploy]
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - name: Deploy Staging
       if: github.ref == 'refs/heads/main'
       run: bash scripts/autodeploy.sh

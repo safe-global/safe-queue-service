@@ -79,7 +79,6 @@ jobs:
       env:
         PIP_USE_MIRRORS: true
     - name: Run database migrations
-      if: ${{ !always() }}
       run: |
         alembic upgrade head
       env:

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from decimal import Decimal
+
 from sqlalchemy import Numeric
-from sqlalchemy.types import BINARY, TypeDecorator
+from sqlalchemy.types import LargeBinary, TypeDecorator
 
 # Max value for Ethereum numeric fields
 UINT256_MAX = 2**256 - 1
@@ -14,9 +16,9 @@ class Uint256Type(TypeDecorator[int]):
     cache_ok = True
 
     def __init__(self) -> None:
-        super().__init__(precision=78, scale=0, asdecimal=False)
+        super().__init__(precision=78, scale=0, asdecimal=True)
 
-    def process_bind_param(self, value, dialect) -> None | int:
+    def process_bind_param(self, value: None | int, dialect) -> None | int:
         if value is None:
             return value
         if not isinstance(value, int):
@@ -25,7 +27,7 @@ class Uint256Type(TypeDecorator[int]):
             raise ValueError("Uint256Type value out of range")
         return value
 
-    def process_result_value(self, value, dialect) -> None | int:
+    def process_result_value(self, value: None | Decimal, dialect) -> None | int:
         if value is None:
             return None
         return int(value)
@@ -34,7 +36,7 @@ class Uint256Type(TypeDecorator[int]):
 class EthereumAddressType(TypeDecorator[bytes]):
     """Persist Ethereum addresses as 20-byte binaries accepting multiple input formats."""
 
-    impl = BINARY(20)
+    impl = LargeBinary(20)
     cache_ok = True
 
     def process_bind_param(
@@ -53,12 +55,7 @@ class EthereumAddressType(TypeDecorator[bytes]):
             raise TypeError(
                 "EthereumAddressType expects memoryview/bytes from the database"
             )
-        value = bytes(value)
-        if len(value) != 20:
-            raise ValueError(
-                "EthereumAddressType expects 20-byte values from the database"
-            )
-        return value
+        return self._coerce_to_bytes(value)
 
     @staticmethod
     def _coerce_to_bytes(value: str | memoryview | bytes) -> bytes:

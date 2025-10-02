@@ -2,7 +2,7 @@ import datetime
 from enum import IntEnum
 
 from sqlalchemy import DateTime, Index, SmallInteger, desc
-from sqlalchemy.types import BINARY
+from sqlalchemy.types import LargeBinary
 from sqlmodel import (
     JSON,
     Column,
@@ -16,7 +16,6 @@ from .fields import EthereumAddressType, Uint256Type
 
 
 class SqlQueryBase:
-
     @classmethod
     async def get_all(cls):
         result = await db_session.execute(select(cls))
@@ -42,18 +41,18 @@ class TimeStampedSQLModel(SQLModel):
     """
 
     created: datetime.datetime = Field(
-        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc),
+        default_factory=lambda: datetime.datetime.now(datetime.UTC),
         nullable=False,
         sa_type=DateTime(timezone=True),  # type: ignore
         index=True,
     )
 
     modified: datetime.datetime = Field(
-        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc),
+        default_factory=lambda: datetime.datetime.now(datetime.UTC),
         nullable=False,
         sa_type=DateTime(timezone=True),  # type: ignore
         sa_column_kwargs={
-            "onupdate": lambda: datetime.datetime.now(datetime.timezone.utc),
+            "onupdate": lambda: datetime.datetime.now(datetime.UTC),
         },
     )
 
@@ -68,7 +67,7 @@ class SafeOperationEnum(IntEnum):
 class MultisigTransaction(SqlQueryBase, TimeStampedSQLModel, table=True):
     __table_args__ = (
         Index(
-            "history_multisigtx_safe_sorted",
+            "ix__multisigtransaction_safe_sorted",
             "safe",
             desc("nonce"),
             desc("created"),
@@ -76,9 +75,9 @@ class MultisigTransaction(SqlQueryBase, TimeStampedSQLModel, table=True):
     )
 
     safe_tx_hash: bytes = Field(
-        sa_column=Column(BINARY(32), nullable=False, primary_key=True)
+        sa_column=Column(LargeBinary(32), nullable=False, primary_key=True)
     )
-    chain_id: bytes = Field(nullable=False)
+    chain_id: int = Field(sa_column=Column(Uint256Type(), nullable=False))
     safe: bytes = Field(
         sa_column=Column(EthereumAddressType(), nullable=False, index=True)
     )
@@ -92,7 +91,7 @@ class MultisigTransaction(SqlQueryBase, TimeStampedSQLModel, table=True):
         sa_column=Column(EthereumAddressType(), nullable=True),
     )
     # Optional executed tx hash
-    tx_hash: bytes | None = Field(sa_column=Column(BINARY(32), nullable=True))
+    tx_hash: bytes | None = Field(sa_column=Column(LargeBinary(32), nullable=True))
     to: bytes | None = Field(
         default=None,
         sa_column=Column(EthereumAddressType(), nullable=True, index=True),

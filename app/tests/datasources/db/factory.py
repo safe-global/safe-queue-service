@@ -1,9 +1,9 @@
 import random
 
-from eth_account import Account
 from faker import Faker
 from hexbytes import HexBytes
 
+from app.datasources.db.fields import UINT256_MAX
 from app.datasources.db.models import MultisigTransaction, SafeOperationEnum
 
 fake = Faker()
@@ -33,28 +33,28 @@ async def multisig_transaction_factory(
     origin: dict | None = None,
 ) -> MultisigTransaction:
     transaction = MultisigTransaction(
-        safe_tx_hash=safe_tx_hash
-        or random.randbytes(32)
-        or HexBytes(Account.create().address).rjust(32, b"\0"),
-        chain_id=(chain_id or random.choice(COMMON_CHAIN_IDS)),
-        safe=HexBytes(safe if safe else "") or HexBytes(Account.create().address),
-        nonce=nonce if nonce is not None else random.randint(0, 2**32 - 1),
-        proposer=HexBytes(proposer if proposer else ""),
-        proposed_by_delegate=HexBytes(
-            proposed_by_delegate if proposed_by_delegate else ""
-        ),
+        safe_tx_hash=safe_tx_hash or random.randbytes(32),
+        chain_id=chain_id or random.choice(COMMON_CHAIN_IDS),
+        safe=HexBytes(safe if safe else "") or random.randbytes(20),
+        nonce=nonce if nonce is not None else random.randint(0, UINT256_MAX),
+        proposer=HexBytes(proposer) if proposer else None,
+        proposed_by_delegate=HexBytes(proposed_by_delegate)
+        if proposed_by_delegate
+        else None,
         tx_hash=tx_hash,
-        to=HexBytes(to if to else ""),
-        value=value if value is not None else random.randint(0, 2**64 - 1),
+        to=HexBytes(to) if to else None,
+        value=value if value is not None else random.randint(0, UINT256_MAX),
         data=data,
         operation=operation or SafeOperationEnum.CALL,
         safe_tx_gas=(
-            safe_tx_gas if safe_tx_gas is not None else random.randint(1, 2**32 - 1)
+            safe_tx_gas if safe_tx_gas is not None else random.randint(0, UINT256_MAX)
         ),
-        base_gas=base_gas if base_gas is not None else random.randint(1, 2**32 - 1),
-        gas_price=gas_price if gas_price is not None else random.randint(1, 2**32 - 1),
-        gas_token=gas_token,
-        refund_receiver=refund_receiver,
+        base_gas=base_gas if base_gas is not None else random.randint(0, UINT256_MAX),
+        gas_price=gas_price
+        if gas_price is not None
+        else random.randint(0, UINT256_MAX),
+        gas_token=HexBytes(gas_token) if gas_token else None,
+        refund_receiver=HexBytes(refund_receiver) if refund_receiver else None,
         signatures=signatures,
         failed=failed,
         origin=origin or {},

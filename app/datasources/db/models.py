@@ -2,7 +2,6 @@ import datetime
 from enum import IntEnum
 
 from sqlalchemy import DateTime, Index, SmallInteger, desc
-from sqlalchemy.types import LargeBinary
 from sqlmodel import (
     JSON,
     Column,
@@ -12,7 +11,7 @@ from sqlmodel import (
 )
 
 from .database import db_session
-from .fields import EthereumAddressType, Uint256Type
+from .fields import EthereumAddressType, EthereumHashType, Uint256Type
 
 
 class SqlQueryBase:
@@ -75,7 +74,7 @@ class MultisigTransaction(SqlQueryBase, TimeStampedSQLModel, table=True):
     )
 
     safe_tx_hash: bytes = Field(
-        sa_column=Column(LargeBinary(32), nullable=False, primary_key=True)
+        sa_column=Column(EthereumHashType(), nullable=False, primary_key=True)
     )
     chain_id: int = Field(sa_column=Column(Uint256Type(), nullable=False))
     safe: bytes = Field(
@@ -90,12 +89,10 @@ class MultisigTransaction(SqlQueryBase, TimeStampedSQLModel, table=True):
         default=None,
         sa_column=Column(EthereumAddressType(), nullable=True),
     )
-    # Optional executed tx hash
-    tx_hash: bytes | None = Field(sa_column=Column(LargeBinary(32), nullable=True))
     to: bytes | None = Field(
         default=None,
         sa_column=Column(EthereumAddressType(), nullable=True, index=True),
-    )
+    )  # `None` = ETHEREUM_ZERO_ADDRESS
     value: int = Field(sa_column=Column(Uint256Type(), nullable=False))
     data: bytes | None = Field(default=None)
     operation: SafeOperationEnum = Field(sa_column=Column(SmallInteger, nullable=False))
@@ -105,11 +102,13 @@ class MultisigTransaction(SqlQueryBase, TimeStampedSQLModel, table=True):
     gas_token: bytes | None = Field(
         default=None,
         sa_column=Column(EthereumAddressType(), nullable=True),
-    )
+    )  # `None` = ETHEREUM_ZERO_ADDRESS
     refund_receiver: bytes | None = Field(
         default=None,
         sa_column=Column(EthereumAddressType(), nullable=True),
-    )
+    )  # `None` = ETHEREUM_ZERO_ADDRESS
     signatures: bytes | None = Field(default=None)
     failed: bool | None = Field(default=None, index=True)
     origin: dict = Field(default_factory=dict, sa_column=Column(JSON))
+    # Optional executed tx hash
+    tx_hash: bytes | None = Field(sa_column=Column(EthereumHashType(), nullable=True))

@@ -11,7 +11,7 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-from app.datasources.db.fields import EthereumAddressType, Uint256Type
+from app.datasources.db.fields import EthereumAddressType, EthereumHashType, Uint256Type
 
 # revision identifiers, used by Alembic.
 revision: str = "80d8da42b17a"
@@ -27,7 +27,7 @@ def upgrade() -> None:
         "multisigtransaction",
         sa.Column("created", sa.DateTime(timezone=True), nullable=False),
         sa.Column("modified", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("safe_tx_hash", sa.LargeBinary(length=32), nullable=False),
+        sa.Column("safe_tx_hash", EthereumHashType(), nullable=False),
         sa.Column("chain_id", Uint256Type(), nullable=False),
         sa.Column(
             "safe",
@@ -49,7 +49,6 @@ def upgrade() -> None:
             EthereumAddressType(),
             nullable=True,
         ),
-        sa.Column("tx_hash", sa.LargeBinary(length=32), nullable=True),
         sa.Column(
             "to",
             EthereumAddressType(),
@@ -90,6 +89,7 @@ def upgrade() -> None:
         sa.Column("signatures", sa.LargeBinary(), nullable=True),
         sa.Column("failed", sa.Boolean(), nullable=True),
         sa.Column("origin", sa.JSON(), nullable=True),
+        sa.Column("tx_hash", EthereumHashType(), nullable=True),
         sa.PrimaryKeyConstraint("safe_tx_hash"),
     )
     op.create_index(

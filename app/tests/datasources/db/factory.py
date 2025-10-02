@@ -32,18 +32,19 @@ async def multisig_transaction_factory(
     failed: bool | None = None,
     origin: dict | None = None,
 ) -> MultisigTransaction:
-    safe_address = safe or HexBytes(Account.create().address)
-
     transaction = MultisigTransaction(
         safe_tx_hash=safe_tx_hash
+        or random.randbytes(32)
         or HexBytes(Account.create().address).rjust(32, b"\0"),
         chain_id=(chain_id or random.choice(COMMON_CHAIN_IDS)),
-        safe=safe_address,
+        safe=HexBytes(safe if safe else "") or HexBytes(Account.create().address),
         nonce=nonce if nonce is not None else random.randint(0, 2**32 - 1),
-        proposer=proposer,
-        proposed_by_delegate=proposed_by_delegate,
+        proposer=HexBytes(proposer if proposer else ""),
+        proposed_by_delegate=HexBytes(
+            proposed_by_delegate if proposed_by_delegate else ""
+        ),
         tx_hash=tx_hash,
-        to=to,
+        to=HexBytes(to if to else ""),
         value=value if value is not None else random.randint(0, 2**64 - 1),
         data=data,
         operation=operation or SafeOperationEnum.CALL,

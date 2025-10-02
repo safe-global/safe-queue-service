@@ -36,7 +36,8 @@ class Uint256Type(TypeDecorator[int]):
 class EthereumAddressType(TypeDecorator[bytes]):
     """Persist Ethereum addresses as 20-byte binaries accepting multiple input formats."""
 
-    impl = LargeBinary(20)
+    binary_size = 20
+    impl = LargeBinary(binary_size)
     cache_ok = True
 
     def process_bind_param(
@@ -53,16 +54,17 @@ class EthereumAddressType(TypeDecorator[bytes]):
             return None
         if not isinstance(value, (memoryview, bytes)):
             raise TypeError(
-                "EthereumAddressType expects memoryview/bytes from the database"
+                f"{self.__class__.__name__} expects memoryview/bytes from the database"
             )
         return self._coerce_to_bytes(value)
 
-    @staticmethod
-    def _coerce_to_bytes(value: str | memoryview | bytes) -> bytes:
+    def _coerce_to_bytes(self, value: str | memoryview | bytes) -> bytes:
         if isinstance(value, (memoryview, bytes)):
             raw = bytes(value)
-            if len(raw) != 20:
-                raise ValueError("EthereumAddressType expects 20-byte values")
+            if len(raw) != self.binary_size:
+                raise ValueError(
+                    f"{self.__class__.__name__} expects {self.binary_size}-byte values"
+                )
             return raw
 
         if isinstance(value, str):
@@ -73,6 +75,14 @@ class EthereumAddressType(TypeDecorator[bytes]):
             try:
                 return bytes.fromhex(text)
             except ValueError as exc:
-                raise ValueError("Invalid Ethereum address format") from exc
+                raise ValueError(
+                    f"{self.__class__.__name__} expects a valid hex string"
+                ) from exc
 
-        raise TypeError("EthereumAddressType expects bytes or hex string inputs")
+        raise TypeError(f"{self.__class__.__name__} expects bytes or hex string inputs")
+
+
+class EthereumHashType(EthereumAddressType):
+    """Persist Ethereum keccak 32-byte hashes"""
+
+    binary_size = 32

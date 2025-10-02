@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     DATABASE_POOL_SIZE: int = 10
     RABBITMQ_AMQP_URL: str = "amqp://guest:guest@"
     RABBITMQ_AMQP_EXCHANGE: str = "safe-transaction-service-events"
+    RABBITMQ_QUEUE_EVENTS_QUEUE_NAME: str = "queue-service"
     SECRET_KEY: str = secrets.token_urlsafe(32)
 
 

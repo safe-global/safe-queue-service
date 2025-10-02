@@ -1,0 +1,88 @@
+from __future__ import annotations
+
+from decimal import Decimal
+
+from sqlalchemy import Numeric
+from sqlalchemy.types import LargeBinary, TypeDecorator
+
+# Max value for Ethereum numeric fields
+UINT256_MAX = 2**256 - 1
+
+
+class Uint256Type(TypeDecorator[int]):
+    """Store uint256 values in a numeric column while enforcing bounds."""
+
+    impl = Numeric
+    cache_ok = True
+
+    def __init__(self) -> None:
+        super().__init__(precision=78, scale=0, asdecimal=True)
+
+    def process_bind_param(self, value: None | int, dialect) -> None | int:
+        if value is None:
+            return value
+        if not isinstance(value, int):
+            raise TypeError("Uint256Type expects Python int values")
+        if value < 0 or value > UINT256_MAX:
+            raise ValueError("Uint256Type value out of range")
+        return value
+
+    def process_result_value(self, value: None | Decimal, dialect) -> None | int:
+        if value is None:
+            return None
+        return int(value)
+
+
+class EthereumAddressType(TypeDecorator[bytes]):
+    """Persist Ethereum addresses as 20-byte binaries accepting multiple input formats."""
+
+    binary_size = 20
+    impl = LargeBinary(binary_size)
+    cache_ok = True
+
+    def process_bind_param(
+        self, value: None | str | memoryview | bytes, dialect
+    ) -> None | bytes:
+        if value is None:
+            return None
+        return self._coerce_to_bytes(value)
+
+    def process_result_value(
+        self, value: None | memoryview | bytes, dialect
+    ) -> None | bytes:
+        if value is None:
+            return None
+        if not isinstance(value, (memoryview, bytes)):
+            raise TypeError(
+                f"{self.__class__.__name__} expects memoryview/bytes from the database"
+            )
+        return self._coerce_to_bytes(value)
+
+    def _coerce_to_bytes(self, value: str | memoryview | bytes) -> bytes:
+        if isinstance(value, (memoryview, bytes)):
+            raw = bytes(value)
+            if len(raw) != self.binary_size:
+                raise ValueError(
+                    f"{self.__class__.__name__} expects {self.binary_size}-byte values"
+                )
+            return raw
+
+        if isinstance(value, str):
+            text = value.strip()
+            if text.startswith("0x") or text.startswith("0X"):
+                text = text[2:]
+
+            try:
+                return bytes.fromhex(text)
+            except ValueError as exc:
+                raise ValueError(
+                    f"{self.__class__.__name__} expects a valid hex string"
+                ) from exc
+
+        raise TypeError(f"{self.__class__.__name__} expects bytes or hex string inputs")
+
+
+class EthereumHashType(EthereumAddressType):
+    """Persist Ethereum keccak 32-byte hashes"""
+
+    binary_size = 32

@@ -39,5 +39,13 @@ cp .env.sample .env
 ```
 
 
+### Handle migrations
+This projects is using [Alembic](https://alembic.sqlalchemy.org/en/latest/) to manage database migrations.
+To create a new migration based on changes made to the model code, run the following command:
+
+```bash
+alembic revision --autogenerate -m "MIGRATION TITLE"
+```
+
 ## Contributors
 [See contributors](https://github.com/safe-global/safe-queue-service/graphs/contributors)
